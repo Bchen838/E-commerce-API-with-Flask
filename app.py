@@ -2,11 +2,11 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from marshmallow import ValidationError
-from sqlalchemy import ForeignKey, Table, Column, String, Integer, DateTime, Float, select
-from typing import List, Optional
+from sqlalchemy import ForeignKey, Table, Column, String, DateTime, Float, select
+from typing import List
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime
-import os
+
 
 
 # Initialize Flask App
@@ -101,6 +101,8 @@ def get_users():
 @app.route('/users/<int:id>', methods=['GET'])
 def get_user(id):
     user = db.session.get(User, id)
+    if not user:
+        return jsonify({"message": "Invalid user id"}), 400
     return user_schema.jsonify(user), 200
 
 # CREATE new user 
@@ -109,7 +111,7 @@ def create_user():
     try:
         user_data = user_schema.load(request.json)
     except ValidationError as e:
-        return jsonify(e.message), 400
+        return jsonify(e.messages), 400
     
     new_user = User(name=user_data['name'], address=user_data['address'],email=user_data['email'])
     db.session.add(new_user)
@@ -164,6 +166,8 @@ def get_products():
 @app.route('/products/<int:id>', methods=['GET'])
 def get_product(id):
     product = db.session.get(Product, id)
+    if not product:
+        return jsonify({"message": "Invalid product id"}), 400
     return product_schema.jsonify(product), 200
 
 # CREATE a new product
@@ -225,7 +229,10 @@ def create_order():
     if not user:
         return {"error": "User not found"}
     
-    new_order = Order(user_id=order_data["user_id"])
+    new_order = Order(
+        user_id=order_data["user_id"],
+        order_date=order_data["order_date"]
+    )
     
     db.session.add(new_order)
     db.session.commit()
@@ -270,7 +277,7 @@ def delete_productOrder(order_id, product_id):
     return jsonify({"message": "Product has been removed from order"}), 200
 
 # GET all orders for a user 
-@app.route('/orders/user/<user_id>')
+@app.route('/orders/user/<int:user_id>', methods=['GET'])
 def get_orders(user_id):
     user = db.session.get(User, user_id)
 
